@@ -7,26 +7,23 @@ var ebml = {
 	fs = require('fs'),
 	util = require('util');
 
-var mkvPath = "./test.webm";
-// var mkvPath = "./Jellyfish-3-Mbps.mkv";
-
 var decoder = new ebml.Decoder();
 
-var result = { };
+var result = { _name: 'root' };
 var currentTag = result;
-var previousTag;
-var previousMap = {};
+var prevStack = [];
 
 // Used while testing to avoid spam
 var tagFilter = new RegExp('^(cluster|cue|simpleblock).*$', 'i');
 
-decoder.on('tag:begin', function(tagName, depth, data) {
+decoder.on('tag:begin', function(tagName, data) {
 	
 	if (!tagFilter.test(tagName)) {
 		
-		// console.log(depth + '/' + data.level +' > '+ tagName, data.type);
-
-		var tag = {};
+		// console.log(data.level + '/' + data.level +' > '+ tagName, data.type);
+		var tag = {
+			_name: tagName
+		};
 
 		// Add to array if new tag can appear multiple times
 		if (data.mult) {
@@ -43,25 +40,15 @@ decoder.on('tag:begin', function(tagName, depth, data) {
 		}
 
 		if (data.type === 'm') {
-			// console.log('Setting current %s >> %s', currentTag._name, tagName)
-			previousMap[depth] = currentTag;
-			previousTag = currentTag;
+			prevStack.push(currentTag);
 			currentTag = tag;
-		} else {
-			
 		}
 	}
 });
-decoder.on('tag:end', function(tagName, depth, data) {
+decoder.on('tag:end', function(tagName, data) {
 	if (!tagFilter.test(tagName)) {
-		// console.log(data.level +' > END:'+ tagName, data.type);
-
-		var prev2Tag = previousMap[depth-2];
-		// console.log('Setting current %s << %s', previousTag._name, currentTag._name)
-		currentTag = previousTag;
-		if (prev2Tag) {
-			previousTag = prev2Tag;
-		}
+		// console.log(data.level +' > END:'+ tagName);
+		currentTag = prevStack.pop();
 	}
 });
 
@@ -69,9 +56,9 @@ decoder.on('tag:end', function(tagName, depth, data) {
 function getParsedTagData(type, data) {
 	switch (type) {
 		case 'u':
-			return readVariableByteUIntBE(data);
+			return readVariableByteUIntBE(data); //TODO: 4+ octets
 		case 'i':
-			return readVariableByteIntBE(data);
+			return readVariableByteIntBE(data);  //TODO: 4+ octets
 		case 'f':
 			return data.readFloatBE(0);
 		case 'b':
@@ -90,8 +77,8 @@ function getParsedTagData(type, data) {
 	}
 }
 
-function DateFromBuffer(buff, index) {
-	var hStr = buff.toString('hex', index, index+8);
+function DateFromBuffer(buf, index) {
+	var hStr = buf.toString('hex', index, index+8);
 	var nanoSecs = parseInt(hStr, 16);
 	var milliSecs = nanoSecs / 1e6;
 	return new Date(9783072e5 + milliSecs);
@@ -120,6 +107,11 @@ TrackType = Object.freeze({
 	VIDEO: 1,
 	AUDIO: 2
 });
+
+// ========= MAIN ==========
+
+var mkvPath = "./test.webm";
+// var mkvPath = "./Jellyfish-3-Mbps.mkv";
 
 fs.readFile(mkvPath, function(err, data) {
 	decoder.write(data);
