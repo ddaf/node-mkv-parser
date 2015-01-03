@@ -1,13 +1,13 @@
 var ebml = {
 		// From ebml module, modified decoder and schema.
 		Tools: require('./lib/tools.js'),
-    	Schema: require('./lib/schema.js'),
-    	Decoder: require('./lib/decoder.js'),
-    },
+		Schema: require('./lib/schema.js'),
+		Decoder: require('./lib/decoder.js'),
+	},
 	fs = require('fs'),
 	util = require('util');
 
-var mkvPath = "./True.Detective.S01E01.480p.x264-mSD.mkv";
+var mkvPath = "./test.webm";
 // var mkvPath = "./Jellyfish-3-Mbps.mkv";
 
 var decoder = new ebml.Decoder();
@@ -91,16 +91,16 @@ function getParsedTagData(type, data) {
 }
 
 function DateFromBuffer(buff, index) {
-    var hStr = buff.toString('hex', index, index+8);
-    var nanoSecs = parseInt(hStr, 16);
-    var milliSecs = nanoSecs / 1e6;
-    return new Date(9783072e5 + milliSecs);
+	var hStr = buff.toString('hex', index, index+8);
+	var nanoSecs = parseInt(hStr, 16);
+	var milliSecs = nanoSecs / 1e6;
+	return new Date(9783072e5 + milliSecs);
 }
 
-function padToXByteAlignment(buf, x, be) {
+function padToXByteAlignment(buf, x, bigEndian) {
 	var padBy = x - (buf.length % x);
 	var padding = new Buffer(padBy); padding.fill(0);
-	return be ? Buffer.concat([padding, buf]) : Buffer.concat([buf, padding]);
+	return bigEndian ? Buffer.concat([padding, buf]) : Buffer.concat([buf, padding]);
 }
 
 function readVariableByteIntBE(buf) {
